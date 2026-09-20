@@ -8,18 +8,14 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: List files
-        run: ls -la
-
       - name: Unzip project
         run: |
-          # 查找任何 zip 文件
           ZIP=$(ls *.zip 2>/dev/null | head -1)
           if [ -n "$ZIP" ]; then
             echo "解压: $ZIP"
@@ -29,10 +25,8 @@ jobs:
               rm -rf ScreenTranslator
             fi
           fi
-          echo "===== 当前目录 ====="
           ls -la
-          echo "===== 查找 gradlew ====="
-          find . -name "gradlew" | head -5
+          find . -name "gradlew" | head -3
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -42,20 +36,23 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'tools platform-tools platforms;android-34 build-tools;34.0.0'
 
       - name: Accept licenses
-        run: yes | sdkmanager --licenses || true
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager --install "platforms;android-34" "build-tools;34.0.0" "platform-tools" || true
 
       - name: Build APK
         run: |
-          if [ -f ./gradlew ]; then
-            chmod +x ./gradlew
-            ./gradlew assembleDebug --no-daemon --stacktrace
-          else
-            echo "错误：找不到 gradlew"
-            find . -type f | head -50
+          if [ ! -f ./gradlew ]; then
+            echo "找不到 gradlew，当前文件列表："
+            find . -type f | head -40
             exit 1
           fi
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
         env:
           GRADLE_OPTS: "-Xmx2g -Dorg.gradle.daemon=false"
 
